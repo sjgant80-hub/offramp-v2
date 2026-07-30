@@ -1,0 +1,8 @@
+{
+  "name": "OFFRAMP — sovereign chat-history off-ramp",
+  "short_name": "OFFRAMP",
+  "description": "A dead vendor JSON export → live sovereign memory. Content-addressed, versioned extraction, the wisp over your own thinking-history. Runs in your browser.",
+  "start_url": "./", "scope": "./", "display": "standalone",
+  "background_color": "#0a0c0f", "theme_color": "#0a0c0f",
+  "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

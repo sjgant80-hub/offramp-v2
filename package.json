@@ -1,0 +1,13 @@
+{
+  "name": "offramp",
+  "version": "0.2.0",
+  "description": "The sovereign chat-history off-ramp — a dead vendor JSON export → live memory. L0 immutable content-addressed archive (cross-vendor dedupe proven) → L1 versioned pure extractor → L2 si-didy retrieval + mirror → L3 the wisp (moving frontier). Joins fall-remember/ETH/wisp into one stack. Proof-of-play gated.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test test/offramp.test.mjs",
+    "gate": "node konomi/run-gate.mjs"
+  },
+  "keywords": ["chat-history", "sovereign-memory", "content-addressing", "cross-vendor", "fall-remember", "wisp", "proof-of-play"],
+  "engines": { "node": ">=20" }
+}

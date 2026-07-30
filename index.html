@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>OFFRAMP — a dead vendor export → live sovereign memory</title>
+<meta name="description" content="Turn a ChatGPT or Claude JSON export into a searchable, pattern-surfacing sovereign memory. Content-addressed (cross-vendor dedupe), versioned extraction, the wisp walking your own thinking-history. Runs entirely in your browser." />
+<meta name="theme-color" content="#0a0c0f" />
+<link rel="manifest" href="./manifest.webmanifest" />
+<style>
+  :root{--bg:#0a0c0f;--panel:#12161b;--panel2:#161c22;--ink:#eaf0f6;--muted:#8a95a2;--line:#232b34;
+    --amber:#e8b24a;--teal:#37d0b6;--red:#ff5c50;--violet:#a488f5;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif}
+  :root[data-theme=light]{--bg:#f4f2ec;--panel:#fff;--panel2:#faf7f0;--ink:#16191d;--muted:#5b6572;--line:#e3ddce;--amber:#a9791a;--teal:#0e9a82;--red:#cf3b30;--violet:#6d4fd0}
+  @media(prefers-color-scheme:light){:root:not([data-theme=dark]){--bg:#f4f2ec;--panel:#fff;--panel2:#faf7f0;--ink:#16191d;--muted:#5b6572;--line:#e3ddce;--amber:#a9791a;--teal:#0e9a82;--red:#cf3b30;--violet:#6d4fd0}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:920px;margin:0 auto;padding:0 20px}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  h1,h2{line-height:1.12;text-wrap:balance;margin:0}
+  a{color:var(--amber)}
+  header{padding:56px 0 24px;border-bottom:1px solid var(--line);position:relative}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.26em;text-transform:uppercase;color:var(--amber);margin:0 0 14px}
+  h1{font-size:clamp(32px,6.5vw,58px);font-weight:800;letter-spacing:-.03em}
+  h1 em{font-style:normal;color:var(--amber)}
+  .lede{font-size:clamp(16px,2.2vw,20px);color:var(--muted);max-width:60ch;margin:18px 0 0}
+  .lede b{color:var(--ink);font-weight:600}
+  section{padding:36px 0;border-bottom:1px solid var(--line)}
+  .kick{font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--amber);margin:0 0 10px}
+  h2{font-size:clamp(21px,3.4vw,28px);font-weight:750;letter-spacing:-.02em}
+  h2+p{color:var(--muted);max-width:64ch;margin:11px 0 0}
+  button{font:inherit;font-weight:600;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);padding:10px 15px;transition:.12s}
+  button.primary{background:var(--amber);color:#1a1206;border-color:transparent}
+  button:hover{filter:brightness(1.09)} button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px}
+  textarea{width:100%;min-height:96px;margin-top:12px;font-family:var(--mono);font-size:12px;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:12px;resize:vertical}
+  input[type=text]{font:inherit;font-family:var(--mono);background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:10px 13px;flex:1;min-width:200px}
+  .readout{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-top:18px}
+  .cell{border:1px solid var(--line);border-radius:11px;background:var(--panel);padding:13px 15px}
+  .cell .n{font-family:var(--mono);font-size:clamp(20px,3.6vw,27px);font-weight:700;color:var(--amber);line-height:1.05}
+  .cell .n.teal{color:var(--teal)} .cell .k{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+  .items{display:grid;gap:8px;margin-top:16px}
+  .item{border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:11px 14px;font-size:14px}
+  .tag{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:5px;margin-right:9px;border:1px solid var(--line)}
+  .tag.decision{color:var(--teal);border-color:var(--teal)} .tag.hypothesis{color:var(--violet);border-color:var(--violet)}
+  .tag.artifact{color:var(--amber);border-color:var(--amber)} .tag.theme{color:var(--muted)}
+  .qres{margin-top:12px;display:grid;gap:6px}
+  .note{color:var(--muted);font-size:13px;margin-top:12px}
+  .note b{color:var(--teal)}
+  canvas{width:100%;height:260px;margin-top:16px;border:1px solid var(--line);border-radius:12px;background:var(--panel);display:block}
+  code{font-family:var(--mono);background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:.1em .4em;font-size:.88em}
+  footer{padding:32px 0 60px;color:var(--muted);font-size:14px}
+  .sig{font-family:var(--mono);color:var(--amber);opacity:.7;margin-top:12px}
+  .themebtn{position:absolute;top:16px;right:16px;padding:6px 11px;font-size:12px;font-family:var(--mono)}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <button class="themebtn" id="theme" aria-label="toggle theme">◐ theme</button>
+  <p class="eyebrow">OFFRAMP · own your thinking history</p>
+  <h1>The export is dead JSON.<br>The <em>ingestion</em> is the product.</h1>
+  <p class="lede">Every serious LLM user has years of thinking locked in a vendor. The export is
+  portable but useless. OFFRAMP turns it into <b>live sovereign memory</b>: content-addressed so the
+  same conversation from any vendor <b>dedupes to one</b>, extracted into typed signal, and walked by
+  the wisp. <b>Runs entirely in your browser — nothing is uploaded.</b></p>
+</div></header>
+
+<section id="load"><div class="wrap">
+  <p class="kick">L0 · the archive — any vendor → one addressed envelope</p>
+  <h2>Drop your export. Or watch cross-vendor dedupe.</h2>
+  <p>Load the <b>same conversation</b> from two vendors — content-addressing strips vendor + timestamps,
+  so it lands <b>once</b>. That property is what makes this an off-ramp anyone can point at any vendor.</p>
+  <div class="row">
+    <button id="loadGpt">＋ ChatGPT sample</button>
+    <button id="loadClaude">＋ Claude sample (same convo)</button>
+    <button id="loadBatch" class="primary">＋ Load a full batch</button>
+    <button id="reset">reset</button>
+  </div>
+  <textarea id="paste" placeholder="…or paste your own ChatGPT / Claude export JSON here, then press Import"></textarea>
+  <div class="row"><button id="importPaste">Import pasted export</button><span class="note" id="loadNote"></span></div>
+  <div class="readout">
+    <div class="cell"><div class="n teal" id="stat-conv">0</div><div class="k">conversations (L0)</div></div>
+    <div class="cell"><div class="n" id="stat-dedupe">0</div><div class="k">deduped away</div></div>
+    <div class="cell"><div class="n" id="stat-placed">0</div><div class="k">durable signals (L1)</div></div>
+    <div class="cell"><div class="n" id="stat-stable">0</div><div class="k">stable modes (L2·ETH)</div></div>
+  </div>
+</div></section>
+
+<section id="extract"><div class="wrap">
+  <p class="kick">L1 · extract — the durable signal, κ-gated</p>
+  <h2>Decisions, hypotheses, artifacts, themes — the noise stays in L0.</h2>
+  <div class="items" id="items"><p class="note">Load something above.</p></div>
+</div></section>
+
+<section id="query"><div class="wrap">
+  <p class="kick">L2 · si-didy — retrieval + the mirror</p>
+  <h2>Ask your own history. See the patterns you're too close to.</h2>
+  <div class="row"><input type="text" id="q" placeholder="what did I decide about… (try: toll, gate, sovereign)"></div>
+  <div class="qres" id="qres"></div>
+  <p class="note" id="mirror"></p>
+</div></section>
+
+<section id="wisp"><div class="wrap">
+  <p class="kick">L3 · the wisp — the moving frontier</p>
+  <h2>Present at one edge. Stored nowhere. Spiraling, not orbiting.</h2>
+  <p>The wisp walks the golden-placed memory by golden succession — lighting one signature at a time,
+  leaving each as it moves. Its path is <b>attractor-classified</b>: a golden walk is alive; a naive
+  sweep escapes. Same check your estate's own liveness gate runs.</p>
+  <canvas id="canvas" width="1200" height="520" aria-label="the wisp walking the placed memory"></canvas>
+  <p class="note" id="wispNote"></p>
+</div></section>
+
+<footer><div class="wrap">
+  <p>Every step runs on the proof-of-play'd kernel: <code>kernel/offramp.mjs</code> (L0→L3, 60/60
+  mutants killed, fuzz never-throws) joined to the gated <code>fold</code> / <code>eth</code> /
+  <code>attractor</code> organs. Nothing is uploaded; your history stays on your device.</p>
+  <p class="note">Honest limit: memory ≠ retraining. This gives si-didy an archive it <b>reads</b>, not weights it becomes. It knows you completely; it does not become you.</p>
+  <p class="sig">◊ · κ = 1 ⇄ φ⁴</p>
+</div></footer>
+
+<script type="module">
+import { normalize, ingest, makeArchive, address, extractV2, joinStack, query, mirror, goldenPlace, goldenOrder } from './kernel/offramp.mjs';
+const $=id=>document.getElementById(id);
+const root=document.documentElement;
+$('theme').onclick=()=>{const d=getComputedStyle(root).getPropertyValue('--bg').trim().startsWith('#0');root.setAttribute('data-theme',d?'light':'dark');draw();};
+
+// ── built-in samples: the SAME conversation in two vendor shapes + a batch ──
+const CONVO = [['user','what if we make scraping cost compute? idea: a proof-of-work toll'],
+  ['assistant',"let's do it. content unlocks only after a hash puzzle. call it the toll."],
+  ['user','going with that. ship it.']];
+const gptOf=(title,msgs)=>{const m={root:{id:'root',parent:null,children:['n0'],message:null}};msgs.forEach((x,i)=>{m['n'+i]={id:'n'+i,parent:i?'n'+(i-1):'root',children:i<msgs.length-1?['n'+(i+1)]:[],message:{author:{role:x[0]},content:{parts:[x[1]]},create_time:1700000000+i*60}};});return {title,mapping:m};};
+const claudeOf=(name,msgs)=>({name,chat_messages:msgs.map((x,i)=>({sender:x[0]==='user'?'human':'assistant',text:x[1],created_at:'2023-11-14T22:'+(10+i)+':00Z'}))});
+const BATCH_CLAUDE={conversations:[
+  claudeOf('Building the toll',CONVO),
+  claudeOf('Redress engine',[['user','what about a legal-process navigator? the interface is the product'],['assistant',"let's build the accuracy gate first. schema for verified statutes. call it redress-engine."],['user','idea: never bluff a legal claim']]),
+  claudeOf('Sovereign browser',[['user','what if one owned AI operates every site instead of 20 rented ones'],['assistant',"going with a governor-first kernel. the toll idea applies to the edge too."],['user','decided: sovereign is the through-line']]),
+  claudeOf('Geometric stack',[['user','idea: which fold-signatures are stable — golden holds, resonance cancels'],['assistant',"let's build the κ gate. schema: winding → attractor band."]]),
+]};
+
+let archive=makeArchive(), lastAdded=0, lastDedupe=0, join=null;
+function importEnvs(envs,label){
+  const r=ingest(archive,envs); archive=r.archive; lastDedupe+=r.deduped;
+  join=joinStack(archive);
+  $('stat-conv').textContent=archive.order.length;
+  $('stat-dedupe').textContent=lastDedupe;
+  $('stat-placed').textContent=join.l1.count;
+  $('stat-stable').textContent=join.l2.stable;
+  $('loadNote').innerHTML=label;
+  renderItems(); renderMirror(); runQuery(); draw();
+}
+$('loadGpt').onclick=()=>importEnvs(normalize('chatgpt',gptOf('Building the toll',CONVO)),'ChatGPT export imported.');
+$('loadClaude').onclick=()=>{const before=archive.order.length;importEnvs(normalize('claude',claudeOf('Building the toll',CONVO)),'');
+  const same=archive.order.length===before;$('loadNote').innerHTML=same?'🔗 <b style="color:var(--teal)">same address — deduped!</b> The Claude export of that conversation matched the ChatGPT one (vendor + timestamps stripped).':'Claude export imported.';};
+$('loadBatch').onclick=()=>importEnvs(normalize('claude',BATCH_CLAUDE),'Batch of 4 conversations imported.');
+$('reset').onclick=()=>{archive=makeArchive();lastDedupe=0;join=joinStack(archive);['stat-conv','stat-dedupe','stat-placed','stat-stable'].forEach(id=>$(id).textContent='0');$('items').innerHTML='<p class="note">Load something above.</p>';$('qres').innerHTML='';$('mirror').textContent='';$('loadNote').textContent='';draw();};
+$('importPaste').onclick=()=>{let raw;try{raw=JSON.parse($('paste').value);}catch(e){$('loadNote').innerHTML='<span style="color:var(--red)">could not parse that JSON</span>';return;}
+  const src=Array.isArray(raw)&&raw[0]&&raw[0].mapping?'chatgpt':(raw&&raw.mapping?'chatgpt':(raw&&(raw.chat_messages||(raw.conversations&&raw.conversations[0]&&raw.conversations[0].chat_messages))?'claude':(Array.isArray(raw)&&raw[0]&&raw[0].chat_messages?'claude':'claude')));
+  const envs=normalize(src,raw);importEnvs(envs,`Imported ${envs.length} conversation(s) as ${src}.`);};
+
+function renderItems(){
+  if(!join||!join.l1.placed.length){$('items').innerHTML='<p class="note">Load something above.</p>';return;}
+  const order=['decision','artifact','hypothesis','theme'];
+  const items=[...join.l1.placed].sort((a,b)=>order.indexOf(a.type)-order.indexOf(b.type));
+  $('items').innerHTML=items.slice(0,24).map(it=>`<div class="item"><span class="tag ${it.type}">${it.type}</span>${esc(it.text)} ${it.stable?'<span class="mono" style="color:var(--teal);font-size:11px">· stable mode</span>':''}</div>`).join('');
+}
+function renderMirror(){
+  if(!join){$('mirror').textContent='';return;}
+  const m=join.l2.mirror;
+  const rec=m.recurrences.slice(0,5).map(r=>`<b>${esc(r.theme)}</b> ×${r.count}`).join(' · ');
+  $('mirror').innerHTML=`the mirror — decisions: ${m.decisions} · recurring themes: ${rec||'(load a batch)'} · abandoned threads: ${m.abandonedCount}`;
+}
+$('q').addEventListener('input',runQuery);
+function runQuery(){
+  if(!join){$('qres').innerHTML='';return;}
+  const idx={items:join.l1.placed,themes:join.l2.mirror.recurrences,abandoned:join.abandoned};
+  const res=query(idx,$('q').value).slice(0,6);
+  $('qres').innerHTML=$('q').value.trim()?(res.length?res.map(it=>`<div class="item"><span class="tag ${it.type}">${it.type}</span>${esc(it.text)}</div>`).join(''):'<p class="note">no match in the extracted index — it may still be in L0 verbatim.</p>'):'';
+}
+
+// ── L3 wisp animation ──
+let anim=0;
+function draw(){
+  cancelAnimationFrame(anim);
+  const c=$('canvas'),g=c.getContext('2d');const W=c.width,H=c.height;
+  const css=n=>getComputedStyle(root).getPropertyValue(n).trim();
+  const placed=join?join.l1.placed:[];const n=placed.length;
+  g.clearRect(0,0,W,H);
+  if(!n){$('wispNote').textContent='';return;}
+  const order=goldenOrder(n);
+  const cx=W/2,cy=H/2,scale=Math.min(W,H)/(2*Math.sqrt(n+1)+2);
+  const pt=i=>[cx+placed[i].pos[0]*scale,cy+placed[i].pos[1]*scale];
+  const colOf=t=>t==='decision'?css('--teal'):t==='hypothesis'?css('--violet'):t==='artifact'?css('--amber'):css('--muted');
+  let step=0;const trailN=Math.max(6,Math.floor(n/2));
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function frame(){
+    g.clearRect(0,0,W,H);
+    // all signatures (the substrate — cool, holding shape)
+    for(let i=0;i<n;i++){const[x,y]=pt(i);g.fillStyle=css('--line');g.beginPath();g.arc(x,y,3,0,7);g.fill();}
+    const head=reduce?n-1:step%n;
+    // the trail (recent folds the wisp lit)
+    for(let k=Math.max(0,head-trailN);k<=head;k++){const i=order[k];const[x,y]=pt(i);const a=1-(head-k)/trailN;
+      g.strokeStyle=css('--line');if(k>Math.max(0,head-trailN)){const[px,py]=pt(order[k-1]);g.beginPath();g.moveTo(px,py);g.lineTo(x,y);g.globalAlpha=a*.5;g.stroke();g.globalAlpha=1;}
+      g.fillStyle=colOf(placed[i].type);g.globalAlpha=a;g.beginPath();g.arc(x,y,5,0,7);g.fill();g.globalAlpha=1;}
+    // the frontier — one live edge
+    const hi=order[head];const[hx,hy]=pt(hi);
+    g.fillStyle=colOf(placed[hi].type);g.beginPath();g.arc(hx,hy,9,0,7);g.fill();
+    g.strokeStyle=colOf(placed[hi].type);g.globalAlpha=.5;g.beginPath();g.arc(hx,hy,15,0,7);g.stroke();g.globalAlpha=1;
+    if(!reduce){step++;anim=requestAnimationFrame(frame);}
+  }
+  frame();
+  const w=join.l3;
+  $('wispNote').innerHTML=`walking ${w.total} signatures · one live edge (maxActive ${w.maxActive}) · stored-nowhere ${w.storedNowhere?'✓':'✗'} · ${w.alive?'<b>ALIVE (spiraling)</b>':'flatlined'}`;
+}
+draw();
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+</script>
+</body>
+</html>
