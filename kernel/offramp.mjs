@@ -12,6 +12,7 @@ import { sha256 } from './sha256.mjs';
 import classify, { CLASS } from './attractor.mjs';
 import { foldSubset } from './fold.mjs';                      // L1 codec — a signature ⇄ a bloom coordinate
 import { stabilityOfWinding, windingOf } from './eth.mjs';    // L2 dynamics — is a signature a stable mode?
+import FallRemember from './fall-remember.mjs';               // L1 store — the real dodeca memory organ
 
 export const KAPPA = 0.618;                         // the durability gate — only stable signal is placed
 const PHI = (1 + Math.sqrt(5)) / 2;
@@ -242,6 +243,31 @@ export function signatureWinding(it) {
   const typeW = it && it.type === 'decision' ? 5 : it && it.type === 'artifact' ? 3 : it && it.type === 'theme' ? (it.count || 2) : 2;
   return windingOf([ (it && it.recur) || 1, durability(it) * 8, typeW ]);
 }
+// L1 STORE (for real): place each durable signature into a real fall-remember dodeca store.
+// Each signature routes (LSH) to one of 12 chambers; retrieval is fall-remember's cosine CUBE.
+export function placeInMemory(items) {
+  const fr = new FallRemember();
+  for (const it of (Array.isArray(items) ? items : [])) {
+    if (it && typeof it.text === 'string' && it.text) {
+      fr.store({ text: it.text, sig: S(it.conv), meta: { type: it.type, conv: it.conv, title: it.title, recur: it.recur, mode: it.mode, stable: it.stable, bloom: it.bloom } });
+    }
+  }
+  return fr;
+}
+// Every stored record across the 12 chambers (for the wisp to walk).
+export function memoryRecords(fr) {
+  const ch = fr && Array.isArray(fr.chambers) ? fr.chambers : [];
+  const out = [];
+  for (const c of ch) if (Array.isArray(c)) for (const r of c) out.push(r);
+  return out;
+}
+// L2 RECALL (for real): fall-remember's cosine CUBE — focal + nearest-by-meaning context.
+export function recall(fr, q, k = 6) {
+  if (!fr || typeof fr.retrieve !== 'function') return { center: null, corners: [], chambersSearched: 0 };
+  try { return fr.retrieve(S(q), { k: Number.isInteger(k) && k > 0 ? k : 6 }); }
+  catch { return { center: null, corners: [], chambersSearched: 0 }; }
+}
+
 export function joinStack(archive) {
   const idx = extractV2(archive);                              // L1 · extract, κ-gated to durable signal
   const themeRing = {};                                        // top ≤7 themes ↦ the 7 prime rings
@@ -251,18 +277,19 @@ export function joinStack(archive) {
     const mode = stabilityOfWinding(signatureWinding(it));     // L2 · ETH geometric mode
     return { ...it, bloom: foldSubset(lit), rings: lit, mode: mode.class, stable: mode.stable };
   });
-  const placed = goldenPlace(encoded);                         // L1 · fall-remember golden placement
-  const wisp = wispWalk(placed);                               // L3 · the moving frontier
+  const memory = placeInMemory(encoded);                       // L1 · REAL fall-remember store (dodeca chambers)
+  const records = memoryRecords(memory);
+  const wisp = wispWalk(goldenPlace(records));                 // L3 · the moving frontier over the stored records
   const lineages = idx.themes.map((t) => {                     // L2 applied to lineages (living vs transient)
     const s = stabilityOfWinding(windingOf([t.count, KAPPA * 10, 2]));
     return { theme: t.text, count: t.count, mode: s.class };
   });
   return {
     l0: archive && Array.isArray(archive.order) ? archive.order.length : 0,
-    l1: { placed, count: placed.length },
+    l1: { memory, count: memory.size, distribution: memory.distribution() },   // the real store
     l2: { mirror: mirror(idx), lineages, stable: encoded.filter((e) => e.stable).length },
     l3: wisp,
-    abandoned: idx.abandoned,
+    encoded, abandoned: idx.abandoned,
   };
 }
 

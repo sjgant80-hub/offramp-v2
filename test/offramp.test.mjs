@@ -4,7 +4,7 @@ import classify, { CLASS } from '../kernel/attractor.mjs';
 import {
   normalize, canonMessages, address, chunkEnvelope, makeArchive, ingest, archiveAll,
   extractV1, extractV2, durable, goldenPlace, query, lineage, mirror,
-  goldenOrder, wispWalk, joinStack, signatureWinding, KAPPA,
+  goldenOrder, wispWalk, joinStack, signatureWinding, placeInMemory, recall, memoryRecords, KAPPA,
 } from '../kernel/offramp.mjs';
 
 // SAME conversation, two vendor shapes — the fixtures that make the "proven" claims testable.
@@ -212,14 +212,46 @@ test('the ChatGPT root-finder walks from the true root regardless of node order'
 });
 
 // ── THE JOIN · L1 ⇄ L2 ⇄ L3 in one flow ──
+const THIRD = { name: 'Sovereign browser', chat_messages: [
+  { sender: 'human', text: 'idea: a sovereign browser — one owned AI operates every site' },
+  { sender: 'assistant', text: "let's build the governor kernel first. decided: going with sovereign." },
+  { sender: 'human', text: 'the toll idea applies to the edge too. ship it.' },
+] };
+test('placeInMemory stores into REAL fall-remember chambers; recall returns the cosine CUBE', () => {
+  const arch = ingest(makeArchive(), [normalize('claude', CLAUDE)[0], normalize('claude', OTHER)[0], normalize('claude', THIRD)[0]]).archive;
+  const items = extractV2(arch).items;
+  const fr = placeInMemory(items);
+  assert.ok(fr.size >= 3);
+  assert.equal(typeof fr.retrieve, 'function');                       // a genuine FallRemember instance
+  assert.equal(memoryRecords(fr).length, fr.size);                   // every stored record enumerable
+  assert.equal(fr.distribution().reduce((a, b) => a + b, 0), fr.size); // routed across the 12 dodeca chambers
+  const cube = recall(fr, 'toll', 4);
+  assert.ok(cube.center && typeof cube.center.text === 'string');    // a focal record
+  assert.ok(Array.isArray(cube.corners));                            // cosine-nearest context (the CUBE)
+  assert.ok(cube.chambersSearched >= 1);
+  // recall's k guard: non-positive / non-integer k falls back to the default (6), not passed through
+  const def = recall(fr, 'toll').corners.length;
+  assert.ok(def >= 2);
+  assert.equal(recall(fr, 'toll', 0).corners.length, def);          // k=0 → default (k > 0 guard)
+  assert.equal(recall(fr, 'toll', 1.5).corners.length, def);        // non-integer k → default (&& guard)
+  // placeInMemory only stores items whose text is a real STRING (a non-string is rejected by the
+  // guard, not coerced by store) — this is what distinguishes the && guards from ||
+  assert.equal(placeInMemory([{ type: 'decision', text: 123 }]).size, 0);
+  assert.equal(placeInMemory('nope').size, 0);                       // total
+  assert.equal(memoryRecords(null).length, 0);
+  assert.deepEqual(recall(null, 'x').corners, []);
+});
+
 test('joinStack threads the archive through fall-remember (L1) · ETH (L2) · wisp (L3)', () => {
   const arch = ingest(makeArchive(), [normalize('claude', CLAUDE)[0], normalize('claude', OTHER)[0]]).archive;
   const j = joinStack(arch);
   assert.ok(j.l0 >= 2);
-  assert.ok(j.l1.count >= 1 && j.l1.placed.every((p) => 'bloom' in p && Array.isArray(p.pos)));
-  assert.ok('mode' in j.l1.placed[0]);                    // ETH stability mode attached (L2)
+  assert.ok(j.l1.count >= 1);
+  assert.equal(typeof j.l1.memory.retrieve, 'function');             // L1 is a REAL fall-remember store
+  assert.equal(j.l1.distribution.reduce((a, b) => a + b, 0), j.l1.count); // records live in the chambers
+  assert.ok('mode' in j.encoded[0]);                                 // ETH stability mode attached (L2)
   assert.ok(Number.isFinite(j.l2.stable));
-  assert.equal(j.l3.storedNowhere, true);                 // the wisp over the placed memory (L3)
+  assert.equal(j.l3.storedNowhere, true);                            // the wisp over the stored records (L3)
   assert.equal(j.l3.covered, true);
-  assert.equal(joinStack(null).l0, 0);                    // total
+  assert.equal(joinStack(null).l0, 0);                               // total
 });

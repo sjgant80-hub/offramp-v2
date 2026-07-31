@@ -38,6 +38,9 @@ for (const [name, fn] of Object.entries({
   'wispWalk':       (x) => off.wispWalk(x),
   'signatureWinding': (x) => off.signatureWinding(x),
   'joinStack':      (x) => off.joinStack(x),
+  'placeInMemory':  (x) => off.placeInMemory(x),
+  'memoryRecords':  (x) => off.memoryRecords(x),
+  'recall':         (x) => off.recall(x, x),
 })) {
   const f = await fuzz(fn);
   console.log(`  ${name}: ${f.neverThrows ? 'never throws — OK' : 'THREW on ' + f.throwsOn.map((t) => t.input).join(', ')}`);

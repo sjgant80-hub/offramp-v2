@@ -82,20 +82,20 @@
   <div class="readout">
     <div class="cell"><div class="n teal" id="stat-conv">0</div><div class="k">conversations (L0)</div></div>
     <div class="cell"><div class="n" id="stat-dedupe">0</div><div class="k">deduped away</div></div>
-    <div class="cell"><div class="n" id="stat-placed">0</div><div class="k">durable signals (L1)</div></div>
+    <div class="cell"><div class="n" id="stat-placed">0</div><div class="k">in fall-remember (L1)</div></div>
     <div class="cell"><div class="n" id="stat-stable">0</div><div class="k">stable modes (L2·ETH)</div></div>
   </div>
 </div></section>
 
 <section id="extract"><div class="wrap">
-  <p class="kick">L1 · extract — the durable signal, κ-gated</p>
-  <h2>Decisions, hypotheses, artifacts, themes — the noise stays in L0.</h2>
+  <p class="kick">L1 · extract → fall-remember's dodeca store</p>
+  <h2>Durable signal, κ-gated, routed into the 12 chambers.</h2>
   <div class="items" id="items"><p class="note">Load something above.</p></div>
 </div></section>
 
 <section id="query"><div class="wrap">
-  <p class="kick">L2 · si-didy — retrieval + the mirror</p>
-  <h2>Ask your own history. See the patterns you're too close to.</h2>
+  <p class="kick">L2 · si-didy — the cosine CUBE + the mirror</p>
+  <h2>Ask your own history. Retrieval is fall-remember's real CUBE: focal + nearest-by-meaning.</h2>
   <div class="row"><input type="text" id="q" placeholder="what did I decide about… (try: toll, gate, sovereign)"></div>
   <div class="qres" id="qres"></div>
   <p class="note" id="mirror"></p>
@@ -120,7 +120,7 @@
 </div></footer>
 
 <script type="module">
-import { normalize, ingest, makeArchive, address, extractV2, joinStack, query, mirror, goldenPlace, goldenOrder } from './kernel/offramp.mjs';
+import { normalize, ingest, makeArchive, joinStack, recall, memoryRecords, goldenPlace, goldenOrder } from './kernel/offramp.mjs';
 const $=id=>document.getElementById(id);
 const root=document.documentElement;
 $('theme').onclick=()=>{const d=getComputedStyle(root).getPropertyValue('--bg').trim().startsWith('#0');root.setAttribute('data-theme',d?'light':'dark');draw();};
@@ -159,10 +159,12 @@ $('importPaste').onclick=()=>{let raw;try{raw=JSON.parse($('paste').value);}catc
   const envs=normalize(src,raw);importEnvs(envs,`Imported ${envs.length} conversation(s) as ${src}.`);};
 
 function renderItems(){
-  if(!join||!join.l1.placed.length){$('items').innerHTML='<p class="note">Load something above.</p>';return;}
+  const recs=join?memoryRecords(join.l1.memory):[];
+  if(!recs.length){$('items').innerHTML='<p class="note">Load something above.</p>';return;}
   const order=['decision','artifact','hypothesis','theme'];
-  const items=[...join.l1.placed].sort((a,b)=>order.indexOf(a.type)-order.indexOf(b.type));
-  $('items').innerHTML=items.slice(0,24).map(it=>`<div class="item"><span class="tag ${it.type}">${it.type}</span>${esc(it.text)} ${it.stable?'<span class="mono" style="color:var(--teal);font-size:11px">· stable mode</span>':''}</div>`).join('');
+  const items=recs.map(r=>({type:(r.meta&&r.meta.type)||'signal',text:r.text,stable:r.meta&&r.meta.stable,chamber:r.chamber}))
+    .sort((a,b)=>order.indexOf(a.type)-order.indexOf(b.type));
+  $('items').innerHTML=items.slice(0,24).map(it=>`<div class="item"><span class="tag ${it.type}">${it.type}</span>${esc(it.text)} <span class="mono" style="color:var(--muted);font-size:10px">· chamber ${it.chamber}</span>${it.stable?'<span class="mono" style="color:var(--teal);font-size:11px"> · stable mode</span>':''}</div>`).join('');
 }
 function renderMirror(){
   if(!join){$('mirror').textContent='';return;}
@@ -172,10 +174,14 @@ function renderMirror(){
 }
 $('q').addEventListener('input',runQuery);
 function runQuery(){
-  if(!join){$('qres').innerHTML='';return;}
-  const idx={items:join.l1.placed,themes:join.l2.mirror.recurrences,abandoned:join.abandoned};
-  const res=query(idx,$('q').value).slice(0,6);
-  $('qres').innerHTML=$('q').value.trim()?(res.length?res.map(it=>`<div class="item"><span class="tag ${it.type}">${it.type}</span>${esc(it.text)}</div>`).join(''):'<p class="note">no match in the extracted index — it may still be in L0 verbatim.</p>'):'';
+  if(!join||!$('q').value.trim()){$('qres').innerHTML='';return;}
+  // REAL fall-remember retrieval: the cosine CUBE — 1 focal + nearest-by-meaning context
+  const cube=recall(join.l1.memory,$('q').value,5);
+  const rec=r=>`<div class="item"><span class="tag ${(r.meta&&r.meta.type)||'signal'}">${(r.meta&&r.meta.type)||'signal'}</span>${esc(r.text)}</div>`;
+  if(!cube.center){$('qres').innerHTML='<p class="note">nothing stored yet — load an export above.</p>';return;}
+  $('qres').innerHTML=`<p class="note">focal + ${cube.corners.length} context, cosine-nearest across ${cube.chambersSearched} chambers · score ${(cube.score||0).toFixed(2)}</p>`
+    +`<div class="item" style="border-color:var(--teal)"><span class="tag decision" style="color:var(--teal);border-color:var(--teal)">focal</span>${esc(cube.center.text)}</div>`
+    +cube.corners.map(rec).join('');
 }
 
 // ── L3 wisp animation ──
@@ -184,12 +190,13 @@ function draw(){
   cancelAnimationFrame(anim);
   const c=$('canvas'),g=c.getContext('2d');const W=c.width,H=c.height;
   const css=n=>getComputedStyle(root).getPropertyValue(n).trim();
-  const placed=join?join.l1.placed:[];const n=placed.length;
+  const placed=join?goldenPlace(memoryRecords(join.l1.memory)):[];const n=placed.length;
   g.clearRect(0,0,W,H);
   if(!n){$('wispNote').textContent='';return;}
   const order=goldenOrder(n);
   const cx=W/2,cy=H/2,scale=Math.min(W,H)/(2*Math.sqrt(n+1)+2);
   const pt=i=>[cx+placed[i].pos[0]*scale,cy+placed[i].pos[1]*scale];
+  const typeOf=r=>(r.meta&&r.meta.type)||'signal';
   const colOf=t=>t==='decision'?css('--teal'):t==='hypothesis'?css('--violet'):t==='artifact'?css('--amber'):css('--muted');
   let step=0;const trailN=Math.max(6,Math.floor(n/2));
   const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -201,11 +208,11 @@ function draw(){
     // the trail (recent folds the wisp lit)
     for(let k=Math.max(0,head-trailN);k<=head;k++){const i=order[k];const[x,y]=pt(i);const a=1-(head-k)/trailN;
       g.strokeStyle=css('--line');if(k>Math.max(0,head-trailN)){const[px,py]=pt(order[k-1]);g.beginPath();g.moveTo(px,py);g.lineTo(x,y);g.globalAlpha=a*.5;g.stroke();g.globalAlpha=1;}
-      g.fillStyle=colOf(placed[i].type);g.globalAlpha=a;g.beginPath();g.arc(x,y,5,0,7);g.fill();g.globalAlpha=1;}
+      g.fillStyle=colOf(typeOf(placed[i]));g.globalAlpha=a;g.beginPath();g.arc(x,y,5,0,7);g.fill();g.globalAlpha=1;}
     // the frontier — one live edge
     const hi=order[head];const[hx,hy]=pt(hi);
-    g.fillStyle=colOf(placed[hi].type);g.beginPath();g.arc(hx,hy,9,0,7);g.fill();
-    g.strokeStyle=colOf(placed[hi].type);g.globalAlpha=.5;g.beginPath();g.arc(hx,hy,15,0,7);g.stroke();g.globalAlpha=1;
+    g.fillStyle=colOf(typeOf(placed[hi]));g.beginPath();g.arc(hx,hy,9,0,7);g.fill();
+    g.strokeStyle=colOf(typeOf(placed[hi]));g.globalAlpha=.5;g.beginPath();g.arc(hx,hy,15,0,7);g.stroke();g.globalAlpha=1;
     if(!reduce){step++;anim=requestAnimationFrame(frame);}
   }
   frame();
