@@ -19,7 +19,49 @@ const PHI = (1 + Math.sqrt(5)) / 2;
 const GOLDEN_ANGLE = 2 * Math.PI * (1 - 1 / PHI);   // 137.5° Vogel placement
 
 // ══ L0 · adapters: any vendor export → one normalized envelope ══
-export const ADAPTERS = { chatgpt: normalizeChatGPT, claude: normalizeClaude };
+// ⚑ THE THIRD SHAPE. Claude Code does not write the web export's { chat_messages, sender, text } —
+// it writes a JSONL transcript, one object per line, where a message's content is either a string
+// or an array of typed blocks (text / tool_use / tool_result) and the interesting lines are mixed in
+// with title, mode and queue bookkeeping.
+//
+// This is why two days of work reached no memory at all. Not a forgotten step: there was no organ
+// that could read the format the work was actually happening in. An off-ramp that cannot ingest the
+// place you do your thinking is an off-ramp for somebody else's thinking.
+//
+// Tool traffic is deliberately dropped. What is worth keeping is what was SAID — the decisions, the
+// reversals, the reasons — not ten thousand tool invocations that are already in git.
+function normalizeClaudeCode(raw) {
+  const lines = Array.isArray(raw) ? raw
+    : String(raw).split(String.fromCharCode(10)).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+
+  const messages = [];
+  let title = '';
+  for (const j of lines) {
+    if (!j || typeof j !== 'object') continue;
+    if (j.type === 'custom-title' || j.type === 'ai-title') { title = S(j.customTitle || j.aiTitle) || title; continue; }
+    if (j.type !== 'user' && j.type !== 'assistant') continue;
+    const m = j.message;
+    if (!m || typeof m !== 'object') continue;
+    const role = m.role === 'user' ? 'user' : m.role === 'assistant' ? 'assistant' : null;
+    if (!role) continue;
+
+    let text = '';
+    if (typeof m.content === 'string') text = m.content;
+    else if (Array.isArray(m.content)) {
+      text = m.content
+        .filter((b) => b && b.type === 'text' && typeof b.text === 'string')
+        .map((b) => b.text).join(' ');
+    }
+    text = String(text || '').trim();
+    // System-injected continuations and reminders are not somebody thinking, they are plumbing.
+    if (!text) continue;
+    if (text.startsWith('<') && text.includes('system-reminder')) continue;
+    messages.push({ role, text, ts: normTs(j.timestamp) });
+  }
+  return [{ source: 'claude-code', title, messages }];
+}
+
+export const ADAPTERS = { chatgpt: normalizeChatGPT, claude: normalizeClaude, 'claude-code': normalizeClaudeCode };
 export function normalize(source, raw) {
   const fn = ADAPTERS[S(source)];
   return typeof fn === 'function' ? fn(raw) : [];
