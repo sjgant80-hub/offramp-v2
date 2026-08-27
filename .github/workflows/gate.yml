@@ -16,5 +16,5 @@ jobs:
         run: |
           git clone --depth 1 --branch v0.6 https://github.com/sjgant80-hub/witness.git /tmp/witness
           node /tmp/witness/witness.mjs mutate kernel/offramp.mjs \
-            --timeout 90000 --cap 800 \
+            --timeout 90000 --cap 800 --baseline witness.baseline.json \
             --test node --test test/offramp.test.mjs test/claude-code.test.mjs
