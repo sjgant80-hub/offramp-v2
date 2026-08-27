@@ -1,0 +1,32 @@
+[
+ {
+  "mutation": ">= → >",
+  "snippet": "export function durable(it) { return durability(it) >= KAPPA; }",
+  "reason": "equivalent by value-set: durability() only ever returns {0.3,0.4,0.5+0.1k,0.8,0.9}; none equals KAPPA=0.618… exactly, so >= and > agree on every reachable input."
+ },
+ {
+  "mutation": "<= → <",
+  "snippet": "if (!Number.isInteger(n) || n <= 0) return [];",
+  "reason": "equivalent by loop self-protection: at n=0 the for-loop body never runs and [] is returned either way; every negative integer still satisfies the mutated n<0."
+ },
+ {
+  "mutation": "> → >=",
+  "snippet": "if (lit.size > maxActive) maxActive = lit.size;",
+  "reason": "equivalent by invariant: lit is cleared and given exactly one member every iteration, so lit.size is always 1; > and >= assign the same maxActive=1."
+ },
+ {
+  "mutation": "< → <=",
+  "snippet": "while (seen.has(idx) && guard < n) { idx = (idx + 1) % n; guard++; }",
+  "reason": "equivalent because the guard never binds: while k<n an unseen index always exists within n steps, so the scan exits by finding it before guard reaches n; the bound is a belt-and-braces terminator."
+ },
+ {
+  "mutation": "< → <=",
+  "snippet": "const alive = n === 0 ? false : (n < 8 ? true : classify(order).class === CLASS.ATTRACTOR)",
+  "reason": "equivalent by construction: goldenOrder is attractor-classified at every tested n (8..50 verified empirically); the n<8 shortcut only skips a computation that returns the same verdict."
+ },
+ {
+  "mutation": "&& → ||",
+  "snippet": "while (seen.has(idx) && guard < n) { idx = (idx + 1) % n; guard++; }",
+  "reason": "equivalent but slower: with || the scan spins full cycles (idx advances n steps, returning to the same index) and still exits on the same first unseen index, producing an identical order."
+ }
+]
