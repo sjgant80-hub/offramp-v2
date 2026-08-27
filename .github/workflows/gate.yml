@@ -12,9 +12,10 @@ jobs:
         run: node --test
 
       # ⚑ Pinned. An unpinned gate is a gate somebody else can change.
-      - name: witness — try to break the off-ramp law (must be CLEAN)
+      - name: witness — try to break the off-ramp law, then READ the verdict (must be CLEAN)
         run: |
           git clone --depth 1 --branch v0.6 https://github.com/sjgant80-hub/witness.git /tmp/witness
           node /tmp/witness/witness.mjs mutate kernel/offramp.mjs \
             --timeout 90000 --cap 800 --baseline witness.baseline.json \
-            --test node --test test/all.test.mjs
+            --test node --test test/all.test.mjs | tee verdict.txt
+          grep -q "no test-theatre" verdict.txt || { echo "::error::mutants survived — the gate is not clean"; exit 1; }
